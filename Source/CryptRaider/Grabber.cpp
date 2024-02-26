@@ -31,8 +31,23 @@ void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompone
 	if (PhysicsHandle == nullptr)
 		return;
 
+	if (!IsGrabbing())
+		return;
+
 	FVector TargetLocation = GetComponentLocation() + GetForwardVector() * HoldDistance;
 	PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, GetComponentRotation());
+}
+
+bool UGrabber::IsGrabbing()
+{
+	UPrimitiveComponent *GrabbedComponent = PhysicsHandle->GetGrabbedComponent();
+	if (GrabbedComponent != nullptr)
+	{
+		GrabbedComponent->WakeAllRigidBodies();
+		return true;
+	}
+
+	return false;
 }
 
 void UGrabber::Grab()
@@ -40,23 +55,14 @@ void UGrabber::Grab()
 	if (PhysicsHandle == nullptr)
 		return;
 
-	FVector Start = GetComponentLocation();
-	FVector End = Start + GetForwardVector() * MaxGrabDistance;
-
-	FCollisionShape Sphere = FCollisionShape::MakeSphere(GrabRadius);
 	FHitResult HitResult;
-	bool HasHit = GetWorld()->SweepSingleByChannel(
-		HitResult,
-		Start,
-		End,
-		FQuat::Identity,
-		ECC_GameTraceChannel2,
-		Sphere);
-
-	if (HasHit)
+	if (GetGrabblableInReach(HitResult))
 	{
+		UPrimitiveComponent *HitComponent = HitResult.GetComponent();
+		HitComponent->WakeAllRigidBodies();
+
 		PhysicsHandle->GrabComponentAtLocationWithRotation(
-			HitResult.GetComponent(),
+			HitComponent,
 			NAME_None,
 			HitResult.ImpactPoint,
 			GetComponentRotation());
@@ -65,7 +71,13 @@ void UGrabber::Grab()
 
 void UGrabber::Release()
 {
-	UE_LOG(LogTemp, Display, TEXT("Grab released"));
+	if (PhysicsHandle == nullptr)
+		return;
+
+	if (!IsGrabbing())
+		return;
+
+	PhysicsHandle->ReleaseComponent();
 }
 
 UPhysicsHandleComponent *UGrabber::GetPhysicsHandle() const
@@ -77,4 +89,22 @@ UPhysicsHandleComponent *UGrabber::GetPhysicsHandle() const
 	}
 
 	return Result;
+}
+
+bool UGrabber::GetGrabblableInReach(FHitResult &OutHitResult) const
+{
+	FVector Start = GetComponentLocation();
+	FVector End = Start + GetForwardVector() * MaxGrabDistance;
+
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(GrabRadius);
+
+	return GetWorld()->SweepSingleByChannel(
+		OutHitResult,
+		Start,
+		End,
+		FQuat::Identity,
+
+		// O valor de collision channel precisa ser verificado no arquivo /config/DefaultEngine.ini
+		ECC_GameTraceChannel2,
+		Sphere);
 }

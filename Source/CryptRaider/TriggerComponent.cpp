@@ -8,6 +8,8 @@ UTriggerComponent::UTriggerComponent()
 void UTriggerComponent::BeginPlay()
 {
     Super::BeginPlay();
+
+    Mover = GetOwner()->FindComponentByClass<UMover>();
 }
 
 void UTriggerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)

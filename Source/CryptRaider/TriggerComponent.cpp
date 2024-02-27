@@ -8,8 +8,6 @@ UTriggerComponent::UTriggerComponent()
 void UTriggerComponent::BeginPlay()
 {
     Super::BeginPlay();
-
-    Mover = GetOwner()->FindComponentByClass<UMover>();
 }
 
 void UTriggerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -17,9 +15,19 @@ void UTriggerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
     AActor *Actor = GetAcceptableActor();
-    if (Actor != nullptr)
+    if (Actor && Mover)
     {
+        UPrimitiveComponent *Component = Cast<UPrimitiveComponent>(Actor->GetRootComponent());
+        if (Component)
+        {
+            Component->SetSimulatePhysics(false);
+        }
+        Actor->AttachToComponent(this, FAttachmentTransformRules::KeepWorldTransform);
         Mover->SetShouldMove(true);
+    }
+    else
+    {
+        Mover->SetShouldMove(false);
     }
 }
 
@@ -35,9 +43,8 @@ AActor *UTriggerComponent::GetAcceptableActor() const
 
     for (AActor *Actor : Actors)
     {
-        if (Actor->ActorHasTag(AcceptableActorTag))
+        if (Actor->ActorHasTag(AcceptableActorTag) && !Actor->ActorHasTag("Grabbed"))
         {
-            UE_LOG(LogTemp, Display, TEXT("Actor %s"), *Actor->GetActorNameOrLabel());
             return Actor;
         }
     }
